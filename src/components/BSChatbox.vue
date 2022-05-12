@@ -7,32 +7,34 @@
     <br>
     <input id="ChatInput" ref="ChatInput">
     <br>
-    <div id="Chat" ref="Chat">
-      {{ chatText }}
-    </div>
-    <br>
     <button id="SendButton" class="button" @click="send(this.$refs.ChatName.value + ': ' + this.$refs.ChatInput.value)">
       Send
     </button>
+    <br>
+    <div id="Chat" ref="Chat">
+      {{ this.chatText }}
+    </div>
   </div>
 </template>
 
 <script>
 /* eslint-disable */
-let chatLog = [];
-let offset = 0;
 export default {
   name: 'BSChatBox',
-  data() {
-    return {
-      chatLogs: chatLog,
-      msgOffset: offset
-    }
-  },
-  chatText: "",
   created() {
+    this.finished = 0;
+    this.chatLog = [];
+    this.chatText = "";
     this.send("User has joined the room!");
     this.update();
+    console.log(this);
+  },
+  data() {
+    return {
+      finished: this.finished,
+      chatLog: this.chatLog,
+      chatText: this.chatText
+    }
   },
   methods: {
     async send(msg) {
@@ -51,19 +53,36 @@ export default {
         body: ndata
       };
       await fetch("https://demo.httprelay.io/mcast/IntOverflowBSChat", requestOptions);
+      this.$refs.ChatInput.value = "";
     },
     async update() {
-      const response = await fetch("https://demo.httprelay.io/mcast/IntOverflowBSChat");
-      const rdata = await response.text();
+      let response = fetch("https://demo.httprelay.io/mcast/IntOverflowBSChat");
+      const p2 = new Promise((_r, rej) => setTimeout(() => rej("p2"), 30000));
+      let resp;
+      try {
+        resp = await Promise.race([response, p2]);
+      } catch (e) {
+        let requestOptions = {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: "0"
+        };
+        await fetch("https://demo.httprelay.io/mcast/IntOverflowBSChat", requestOptions);
+        setTimeout(this.update, 10);
+        return;
+      }
+      let rdata = await (await resp).text();
+      console.log(rdata);
       let split = rdata.split("\n");
       let number = split.shift();
-      if (!chatLog[0]) offset = -number;
       for (let i = 0; i < split.length; i++) {
-        chatLog[number + i + offset] = split[i];
+        if (i + number > this.finished) {
+          this.chatLog.push(split[i]);
+          this.finished++;
+        }
       }
-      this.chatText = chatLog.join("\n");
-      console.log(chatLog.join("\n"));
-      setTimeout(this.update, 500);
+      this.chatText = this.chatLog.join("\n");
+      setTimeout(this.update, 1000);
     }
   }
 }
