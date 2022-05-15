@@ -3,17 +3,19 @@
     <br>
     <div>Send Message</div>
     <br>
+    <div>In chat name:</div>
+    <br>
     <input id="ChatName" ref="ChatName">
-    <br>
-    <input id="ChatInput" ref="ChatInput">
-    <br>
-    <button id="SendButton" class="button" @click="send(this.$refs.ChatName.value + ': ' + this.$refs.ChatInput.value)">
-      Send
-    </button>
     <br>
     <div id="Chat" ref="Chat">
       {{ this.chatText }}
     </div>
+    <br>
+    <textarea id="ChatInput" ref="ChatInput" placeholder="Say something..."></textarea>
+    <br>
+    <button id="SendButton" class="button" @click="send(this.$refs.ChatName.value + ': ' + this.$refs.ChatInput.value)">
+      Send
+    </button>
   </div>
 </template>
 
@@ -22,7 +24,7 @@
 export default {
   name: 'BSChatBox',
   created() {
-    this.finished = 0;
+    this.finished = undefined;
     this.chatLog = [];
     this.chatText = "";
     this.send("User has joined the room!");
@@ -46,7 +48,10 @@ export default {
         split.shift();
         number++;
       }
-      let ndata = number + "\n" + split.join("\n") + "\n" + msg;
+      let ndata = number + "\n" + split.join("\n") + "\n" + btoa(msg);
+      if (split.length === 0) {
+        ndata = number + "\n" + btoa(msg);
+      }
       let requestOptions = {
         method: "POST",
         headers: {"Content-Type": "application/json"},
@@ -57,7 +62,7 @@ export default {
     },
     async update() {
       let response = fetch("https://demo.httprelay.io/mcast/IntOverflowBSChat");
-      const p2 = new Promise((_r, rej) => setTimeout(() => rej("p2"), 30000));
+      const p2 = new Promise((_r, rej) => setTimeout(() => rej("p2"), 20000));
       let resp;
       try {
         resp = await Promise.race([response, p2]);
@@ -74,10 +79,13 @@ export default {
       let rdata = await (await resp).text();
       console.log(rdata);
       let split = rdata.split("\n");
-      let number = split.shift();
+      let number = parseInt(split.shift());
+      if (typeof this.finished === "undefined") {
+        this.finished = number;
+      }
       for (let i = 0; i < split.length; i++) {
-        if (i + number > this.finished) {
-          this.chatLog.push(split[i]);
+        if (i + number >= this.finished) {
+          this.chatLog.push(atob(split[i]));
           this.finished++;
         }
       }
@@ -93,5 +101,14 @@ export default {
 <style scoped>
 .BSChatBox {
   grid-area: sidebar;
+}
+
+#Chat {
+  overflow-y: scroll;
+  width: auto;
+  height: 10rem;
+  border: 1px solid black;
+  text-align: left;
+  white-space: pre;
 }
 </style>
