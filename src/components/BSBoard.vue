@@ -1,33 +1,13 @@
 <template>
-  <div class="hello">
-    <h1>{{ msg }}</h1>
-    <p>
-      For a guide and recipes on how to configure / customize this project,<br>
-      check out the
-      <a href="https://cli.vuejs.org" target="_blank" rel="noopener">vue-cli documentation</a>.
-    </p>
-    <h3>Installed CLI Plugins</h3>
-    <ul>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-babel" target="_blank" rel="noopener">babel</a></li>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-eslint" target="_blank" rel="noopener">eslint</a></li>
-    </ul>
-    <h3>Essential Links</h3>
-    <ul>
-      <li><a href="https://vuejs.org" target="_blank" rel="noopener">Core Docs</a></li>
-      <li><a href="https://forum.vuejs.org" target="_blank" rel="noopener">Forum</a></li>
-      <li><a href="https://chat.vuejs.org" target="_blank" rel="noopener">Community Chat</a></li>
-      <li><a href="https://twitter.com/vuejs" target="_blank" rel="noopener">Twitter</a></li>
-      <li><a href="https://news.vuejs.org" target="_blank" rel="noopener">News</a></li>
-    </ul>
-    <h3>Ecosystem</h3>
-    <ul>
-      <li><a href="https://router.vuejs.org" target="_blank" rel="noopener">vue-router</a></li>
-      <li><a href="https://vuex.vuejs.org" target="_blank" rel="noopener">vuex</a></li>
-      <li><a href="https://github.com/vuejs/vue-devtools#vue-devtools" target="_blank" rel="noopener">vue-devtools</a></li>
-      <li><a href="https://vue-loader.vuejs.org" target="_blank" rel="noopener">vue-loader</a></li>
-      <li><a href="https://github.com/vuejs/awesome-vue" target="_blank" rel="noopener">awesome-vue</a></li>
-    </ul>
-  </div>
+  <div> {{ this.inGameName }}'s board:</div>
+  <canvas ref="Board"
+          height="500"
+          width="500"
+          @click="handleClick"
+          @mouseenter="this.mouseInside = true"
+          @mouseleave="this.mouseInside = false"
+          @mousemove="getMousePos"></canvas>
+  <br/>
 </template>
 
 <script>
@@ -35,6 +15,84 @@ export default {
   name: 'BSBoard',
   props: {
     msg: String
+  },
+  data() {
+    return {
+      board: this.board,
+      inGameName: this.inGameName
+    }
+  },
+  created() {
+    this.inGameName = "";
+    this.buttonX = 0;
+    this.buttonY = 0;
+    this.mouseX = 0;
+    this.mouseY = 0;
+    this.mouseInside = false;
+    this.ctx = undefined;
+    this.board = [];
+    for (let i = 0; i < 10; i++) {
+      this.board.push([]);
+      for (let j = 0; j < 10; j++) {
+        this.board[i].push(".");
+      }
+    }
+    this.colorMap = new Map();
+    this.colorMap.set(".", "rgba(0, 0, 128, 1)")
+        .set("#", "rgba(170, 170, 170, 1)")
+        .set("X", "rgba(255, 0, 40, 1)")
+        .set("O", "rgba(0, 0, 255, 1)");
+  },
+  async mounted() {
+    await this.$nextTick();
+    this.ctx = this.$refs.Board.getContext("2d");
+    this.updateCanvas();
+  },
+  methods: {
+    handleClick() {
+      this.$emit("clicked", {
+        x: this.buttonX,
+        y: this.buttonY
+      })
+    },
+    getMousePos(evt) {
+      let canvas = this.$refs.Board;
+      let rect = canvas.getBoundingClientRect(),
+          scaleX = canvas.width / rect.width,
+          scaleY = canvas.height / rect.height;  // relationship bitmap vs. element for y
+      this.mouseX = (evt.clientX - rect.left) * scaleX;
+      this.mouseY = (evt.clientY - rect.top) * scaleY;
+      this.buttonX = Math.floor(this.mouseX / 50);
+      this.buttonY = Math.floor(this.mouseY / 50);
+    },
+    updateCanvas() {
+      this.ctx.clearRect(0, 0, this.$refs.Board.width, this.$refs.Board.height);
+      for (let i = 0; i < 10; i++) {
+        for (let j = 0; j < 10; j++) {
+          this.ctx.beginPath();
+          this.ctx.rect(i * 50, j * 50, 50, 50);
+          this.ctx.fillStyle = this.colorMap.get(this.board[i][j]);
+          this.ctx.fill();
+          this.ctx.closePath();
+        }
+      }
+      this.ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        for (let j = 0; j < 10; j++) {
+          this.ctx.strokeStyle = "rgba(255,255,255,0.2)";
+          this.ctx.strokeRect(i * 50, j * 50, 50, 50);
+        }
+      }
+      this.ctx.closePath();
+      this.ctx.beginPath();
+      if (this.mouseInside) {
+        this.ctx.rect(this.buttonX * 50, this.buttonY * 50, 50, 50);
+        this.ctx.fillStyle = "rgba(255,255,255,0.2)";
+        this.ctx.fill();
+      }
+      this.ctx.closePath();
+      window.requestAnimationFrame(this.updateCanvas);
+    }
   }
 }
 </script>

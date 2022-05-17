@@ -3,17 +3,13 @@
     <br>
     <div>Send Message</div>
     <br>
-    <div>In chat name:</div>
-    <br>
-    <input id="ChatName" ref="ChatName">
-    <br>
     <div id="Chat" ref="Chat">
       {{ this.chatText }}
     </div>
     <br>
     <textarea id="ChatInput" ref="ChatInput" placeholder="Say something..."></textarea>
     <br>
-    <button id="SendButton" class="button" @click="send(this.$refs.ChatName.value + ': ' + this.$refs.ChatInput.value)">
+    <button id="SendButton" class="button" @click="send(getMsg())">
       Send
     </button>
   </div>
@@ -27,20 +23,31 @@ export default {
     this.finished = undefined;
     this.chatLog = [];
     this.chatText = "";
-    this.send("User has joined the room!");
+    this.lastData = "0";
+    this.send(window.inGameName + " has joined the room!");
     this.update();
-    console.log(this);
   },
   data() {
     return {
       finished: this.finished,
       chatLog: this.chatLog,
-      chatText: this.chatText
+      chatText: this.chatText,
+      lastData: this.lastData
     }
   },
   methods: {
+    getMsg() {
+      let msg = window.inGameName + ': ' + this.$refs.ChatInput.value;
+      if (this.$refs.ChatInput.value === "") {
+        msg = "";
+      }
+      return msg;
+    },
     async send(msg) {
-      const response = await fetch("https://demo.httprelay.io/mcast/IntOverflowBSChat");
+      if (msg === "") {
+        return;
+      }
+      const response = await fetch("https://demo.httprelay.io/mcast/IntOverflowBSChat" + window.serverCode);
       const rdata = await response.text();
       let split = rdata.split("\n");
       let number = split.shift();
@@ -57,11 +64,11 @@ export default {
         headers: {"Content-Type": "application/json"},
         body: ndata
       };
-      await fetch("https://demo.httprelay.io/mcast/IntOverflowBSChat", requestOptions);
+      await fetch("https://demo.httprelay.io/mcast/IntOverflowBSChat" + window.serverCode, requestOptions);
       this.$refs.ChatInput.value = "";
     },
     async update() {
-      let response = fetch("https://demo.httprelay.io/mcast/IntOverflowBSChat");
+      let response = fetch("https://demo.httprelay.io/mcast/IntOverflowBSChat" + window.serverCode);
       const p2 = new Promise((_r, rej) => setTimeout(() => rej("p2"), 20000));
       let resp;
       try {
@@ -70,14 +77,14 @@ export default {
         let requestOptions = {
           method: "POST",
           headers: {"Content-Type": "application/json"},
-          body: "0"
+          body: this.lastData
         };
-        await fetch("https://demo.httprelay.io/mcast/IntOverflowBSChat", requestOptions);
+        await fetch("https://demo.httprelay.io/mcast/IntOverflowBSChat" + window.serverCode, requestOptions);
         setTimeout(this.update, 10);
         return;
       }
       let rdata = await (await resp).text();
-      console.log(rdata);
+      this.lastData = rdata;
       let split = rdata.split("\n");
       let number = parseInt(split.shift());
       if (typeof this.finished === "undefined") {
